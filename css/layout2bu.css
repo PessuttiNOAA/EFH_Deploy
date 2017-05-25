@@ -1,0 +1,179 @@
+      html,body {
+      height:100%;
+      width:100%;
+      margin:0;
+      }
+
+      body {
+      background-color:#FFF;
+      overflow:hidden;
+      font-family:"Trebuchet MS";
+      }
+
+      	#header {
+      background-image:url(../images/noaabanner3.jpg);
+      background-repeat:repeat-x;
+      border:solid 4px #224a54;
+	border-radius: 10px; 
+      color:#FFF;
+      font-size:24pt;
+      text-align:left;
+	text-shadow: 2px 2px #000000,
+	-1px -1px 0 #000,  
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+     1px 1px 0 #000;
+      font-weight:700;
+      height:80px;
+      margin:10px;
+      }
+
+      
+#submitRequest{
+background-color:#F0F8FF;
+ border:solid 1px #224a54;
+}
+
+
+#info {
+      height:100%;
+      width:100%;
+      margin:0;
+	background-color: transparent;
+	color:#1E90FF;
+	font-size:16pt;
+ 	
+    	}    
+
+#content {
+      height:100%;
+      width:100%;
+      margin:10;
+    	}   
+
+#messages {
+      height:100%;
+      width:100%;
+      margin:10;
+    	}    
+ 
+
+	textarea:focus, input:focus{
+    outline: 0;
+}
+
+
+
+	input{
+	border: 0px solid;
+}
+	
+
+	#contmin {
+       
+		width:15%;
+         font-size:12pt;
+      text-align:center;
+ box-shadow: none;
+	color:#1E90FF
+	    	}    
+	
+	#contmax {
+	 box-shadow: none;
+     	
+      	width:15%;
+    	 font-size:12pt;
+      text-align:center;
+	color:#1E90FF
+    	}    
+
+	#sizers{	 
+	background-color:#FFF;
+      color:#3f3f3f;
+      width:100%;
+      margin-top:40px;
+     
+	}
+
+	#yearmin {
+      color:#1E90FF;
+	width:20%;
+	
+         font-size:12pt;
+      text-align:center;
+	    	}    
+	
+	#yearmax {
+	 width:20%;
+    	 font-size:12pt;
+      text-align:center;
+	color:#1E90FF
+    	}    
+
+	#sizers2{	 
+	background-color:#FFF;
+      color:#3f3f3f;
+      width:100%;
+       margin-top:40px;
+     
+	}
+/*
+
+#search{
+      display:block;
+      position:absolute;
+      z-index:2;
+      top:20px;
+      left:75px;
+	}
+
+*/
+	#subtitle {
+      font-size:small;
+      color:#FFF;
+      padding-left:20px;
+      }
+
+      #rightPane {
+      background-color:#FFF;
+      color:#3f3f3f;
+      border:solid 2px #224a54;
+ 	border-radius: 10px;      
+	width:20%;
+      }
+
+      #leftPane {
+      background-color:#FFF;
+      color:#3f3f3f;
+      border:solid 2px #224a54;
+	border-radius: 10px; 
+      width:20%;
+      margin:5px;
+      padding:5px;
+      }
+
+      #map {
+      border:solid 4px #224a54;
+      -moz-border-radius:10px;
+      -webkit-border-radius:10px;
+      border-radius:10px;
+      margin:5px;
+      }
+
+      #footer {
+      border:solid 2px #224a54;
+      background-color:#ecefe4;
+      color:#3f3f3f;
+      font-size:10pt;
+      text-align:center;
+      height:40px;
+      margin:2px;
+      }
+
+      .dijitTabInnerDiv {
+      background-color:#ecefe4;
+      }
+
+      #tabs {
+      padding:5px;
+      }

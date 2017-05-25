@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=7, IE=9, IE=10">
+    <!--The viewport meta tag is used to improve the presentation and behavior of the samples 
+      on iOS devices-->
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">  
+    <title>EFH Model Mapper - Plankton</title>
+
+    <link rel="stylesheet" href="http://js.arcgis.com/3.16/dijit/themes/claro/claro.css">
+   <link rel="stylesheet" href="https://js.arcgis.com/3.16/esri/css/esri.css">
+    <link rel="stylesheet" href="css/layout4p.css"/>
+
+	
+	
+    <script src="https://js.arcgis.com/3.16/"></script>
+<script src="http://canvasjs.com/assets/script/canvasjs.min.js"></script>   
+ <script>
+
+	function openPopup() {
+    document.getElementById('xView').style.display = 'block';
+}
+
+function closePopup() {
+    document.getElementById('xView').style.display = 'none';
+}
+   
+   dojo.require("dijit/layout/BorderContainer");
+      	dojo.require("dijit/layout/ContentPane");
+     	dojo.require("dijit.layout.TabContainer");
+     	dojo.require("esri.map");
+     	dojo.require("esri.arcgis.utils");
+     	dojo.require("esri.IdentityManager");
+	dojo.require("dijit.layout.AccordionContainer");
+	dojo.require("esri.layers.FeatureLayer");
+	//dojo.require("dojox.layout.ToggleSplitter");
+      dojo.require("dijit.TooltipDialog");
+
+	var map;
+	var slider,sizmin,sizmax;
+	var slider2,yrmin,yrmax,Species_Query,Que,viewdef,spec,comname,title,tmin,tmax,slider3,slider4,dmin,dmax;
+	var dlayer,myTable,json,data,dataSeries,dataPoints;
+  var legendLayers = [];
+	// This init function adds the basemap to the div "map". 
+
+
+
+
+
+function init() {
+	
+require([
+  "esri/map", "esri/layers/FeatureLayer", 
+  "esri/dijit/Print", "esri/tasks/PrintTemplate", 
+  "esri/request", "esri/config",
+  "dojo/_base/array", "dojo/dom", "dojo/parser","dijit/layout/BorderContainer", "dijit/layout/ContentPane", "dojo/domReady!"], function(Map, FeatureLayer, 
+    Print, PrintTemplate,esriRequest, esriConfig,arrayUtils, dom, parser) {
+
+        ////////////////////////////////////////
+
+        esriConfig.defaults.io.proxyUrl = "http://155.206.69.34/DotNet/proxy.ashx"
+        esriConfig.defaults.io.alwaysUseProxy=false;
+
+        printUrl = "http://necvssharcgis:6080/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+  
+	       map = new Map("map", {
+          basemap: "oceans",  //For full list of pre-defined basemaps, navigate to http://arcg.is/1JVo6Wd
+          //basemap: "hybrid", 
+          //basemap: "terrain", 
+          
+          center: [-69, 40], // longitude, latitude
+          zoom: 6
+        });
+	       
+          // create an array of objects that will be used to create print templates
+          var layouts = [{
+            name: "Letter ANSI A Landscape", 
+            label: "Landscape (PDF)", 
+            format: "pdf", 
+            options: { 
+              legendLayers: [], // empty array means no legend
+              scalebarUnit: "Miles",
+              titleText: "EFH Example Landscape PDF" //can include species here
+            }
+          }, {
+            name: "Letter ANSI A Portrait", 
+            label: "Portrait (PDF)", 
+            format: "pdf", 
+            options:  { 
+              legendLayers: [],
+              scalebarUnit: "Miles",
+              titleText: "EFH Example Portrait JPG" //can include species here
+            }
+          }];
+          
+          // create the print templates
+          var templates = arrayUtils.map(layouts, function(lo) {
+            var t = new PrintTemplate();
+            t.layout = lo.name;
+            t.label = lo.label;
+            t.format = lo.format;
+            //t.outScale = 24000;
+            //t.preserveScale = true;
+            t.layoutOptions = lo.options;
+            t.exportOptions = {
+            //width: 500,
+            //height: 400,
+            dpi: 300
+              };
+            return t;
+          });
+
+          printer = new Print({
+            map: map,
+            templates: templates,
+            url: printUrl
+          }, dom.byId("printButton"));
+          printer.startup();
+
+
+        
+
+});
+
+}// End of Function 
+
+  //shows map on load 
+
+dojo.ready(init);
+   
+
+  require(["esri/IdentityManager",
+      "esri/layers/FeatureLayer",
+      "esri/dijit/FeatureTable",
+      "dojo/dom-construct",
+      "dojo/dom",
+      "dojo/parser",
+      "dojo/ready",
+      "dojo/on",
+      "dojo/_base/lang",
+      "dijit/registry","dojo/dom-class", "dojo/_base/json", "dojo/_base/array", "dojo/string", "esri/request", "esri/arcgis/utils", 
+         "esri/config", "dojo/_base/array","dojo/domReady!"],
+    function( IdentityManager, FeatureLayer, FeatureTable,
+      domConstruct, dom, parser, ready, on,lang,
+      registry,domClass, dojoJson, array, dojoString, esriRequest,arcgisUtils, esriConfig, arrayUtils) {
+
+	
+    
+
+////////////////////////////////////////////////////  CSV EXPORT
+ 
+ 
+ 
+ function convertArrayOfObjectsToCSV(args) {
+   var result, ctr, keys, columnDelimiter, lineDelimiter, data;
+
+   data = args.data || null;
+   if (data == null || !data.length) {
+     return null;
+   }
+
+   columnDelimiter = args.columnDelimiter || ',';
+   lineDelimiter = args.lineDelimiter || '\n';
+
+   keys = Object.keys(data[0]);
+
+   result = '';
+   result += keys.join(columnDelimiter);
+   result += lineDelimiter;
+
+   data.forEach(function(item) {
+     ctr = 0;
+     keys.forEach(function(key) {
+       if (ctr > 0) result += columnDelimiter;
+
+       result += item[key];
+       ctr++;
+     });
+     result += lineDelimiter;
+   });
+
+   return result;
+ }
+
+ window.downloadCSV = function(args) {
+   var data, filename, link;
+
+   var csv = convertArrayOfObjectsToCSV({
+     data: expdataPoints
+   });
+   if (csv == null) return;
+
+   filename = args.filename || 'export.csv';
+
+   if (!csv.match(/^data:text\/csv/i)) {
+     csv = 'data:text/csv;charset=utf-8,' + csv;
+   }
+   data = encodeURI(csv);
+
+   link = document.createElement('a');
+   link.setAttribute('href', data);
+   link.setAttribute('download', filename);
+   link.click();
+ }
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////	reset and add Species Button
+
+
+on(dom.byId("resetButton"), "click", reset);
+on(dom.byId("addButton"), "click", addSpecies);
+  
+  function addSpecies(){
+    dijit.byId( 'tablediv2' ).destroy( true );
+    console.log("Add Species Ready");
+    alert("Only most recent species selection can be used for modelling");
+  }
+
+
+
+function reset() { 
+    var element = document.getElementById("layers");
+    //var par= element.parentNode;
+    //console.log(element);
+    while (element.hasChildNodes()) {
+        element.removeChild(element.firstChild);
+    }
+    //console.log(par);
+    var line = document.createElement("div");
+    line.id="toggle";
+    //line.innerHTML="toggle2"
+    var space=document.createElement("p");
+    line.innerHTML="_________________________"
+    element.appendChild(line);
+    element.appendChild(space);
+    
+    map.destroy();
+    counter=0;
+    init();
+    dijit.byId( 'tablediv2' ).destroy( true );
+    
+    legendLayers=[];
+    //legend.refresh();
+    console.log("Reset ALL");   
+}
+   
+////////////////////////
+////////////////////////////////////////////////////////////// Set controls for submit button clicks
+
+	      var counter=0;
+        dom.byId("content").value = "";
+        //handle the Go button's click event
+        on(dom.byId("submitSpecies"), "click", getDataContent);
+         
+        //handle the Apply SELECTION button's click event
+        on(dom.byId("submitSelection"), "click", subData);
+
+	//dom.byId("content").value = "";
+        //handle the Go button's click event
+        on(dom.byId("submitModel"), "click", getContent);
+
+///////////////////////////////////////////////////////////////////////////
+
+	function subData(){
+	console.log("clear submitted");
+  console.log(tmin+tmax);
+	
+  //var mosdef='((DEPTH>'+dmin+' AND DEPTH<'+dmax+')AND(BTM_TEMP>='+tmin+' AND BTM_TEMP<='+tmax+'))OR(DEPTH IS NULL)OR(BTM_TEMP IS NULL))';
+  //var mosdef='((DEPTH>'+dmin+' AND DEPTH<'+dmax+')AND(BTM_TEMP>='+tmin+' AND BTM_TEMP<='+tmax+'))';
+  var mosdef='(DEPTH>'+dmin+' AND DEPTH<'+dmax+')AND(BTM_TEMP>'+tmin+' AND BTM_TEMP<'+tmax+')';
+  //var mosdef='(("DEPTH" BETWEEN '+dmin+' AND '+dmax+')AND("BTM_TEMP" BETWEEN '+tmin+' AND '+tmax+'))';
+  console.log(mosdef);
+  map.removeLayer(dlayer);
+  dlayer.setDefinitionExpression(mosdef);
+  heatmapFeatureLayer.setDefinitionExpression(mosdef);//have to plan for nulls
+  map.addLayer(dlayer);
+  dlayer.redraw();
+  heatmapFeatureLayer.redraw();
+  
+	console.log("subset applied");
+	//dijit.byId( "graphdiv2" ).destroy( true );
+	dijit.byId( "tablediv2" ).destroy( true );
+	makeTable();
+	console.log("table refreshed");
+   
+	}
+	
+	
+  /////////////// Feature Table to feed data chart      
+	function makeTable(){
+
+	
+	console.log("starting table"); 	
+	myTable = new FeatureTable({ 
+	"featureLayer" : dlayer,
+         "map":map,
+        }, "tablediv2" );
+        myTable.startup();
+         
+          myTable.on("refresh", function (evt){
+            console.log("refresh event - ", evt);
+            //console.log("json", evt.results[3].DEPTH);
+            
+            // if(typeof evt.results[3] !== "undefined"){
+           // json=[evt.results[3].dispField,evt.results[3].DEPTH,evt.results[3].BTM_TEMP];
+          //  console.log("json: "+json);
+          //    }
+                
+              console.log("len: "+evt.results.length);
+             var y = 0;
+	data = [];
+ 	dataSeries = { type: "bubble" };
+ 	dataPoints = [];
+	for (var i = 0; i < evt.results.length; i += 1) {
+			dataPoints.push({
+			y: evt.results[i].LNABUND,
+			x: evt.results[i].DEPTH,
+			z: (evt.results[i].LNABUND/5),
+			markerBorderColor : "Silver", //change color here
+        		markerBorderThickness: 1,
+			color:"yellow"
+		});
+	}
+	dataSeries.dataPoints = dataPoints;
+	data.push(dataSeries);   
+              var chart = new CanvasJS.Chart("graphdiv2A",
+	{
+		zoomEnabled: true,
+    maintainAspectRatio: false,
+		panEnabled: true, 
+		title:{
+			text: title
+		},
+		exportEnabled:true,
+		backgroundColor: "AliceBlue",
+		legend: {
+			horizontalAlign: "right",
+			verticalAlign: "center"        
+		},
+		toolTip:{
+  backgroundColor: "#1E90FF",
+  fontColor: "Yellow",
+  content:"Depth: {x}, LogCatch: {y}"
+ },
+		axisX:{
+			includeZero: false,
+			title:"Depth (m)",
+		},
+		axisY:{
+			includeZero: false,
+			title:"Log(ABUND)",
+		},
+		data: data,  // random generator below
+    });
+    
+ // if (evt.results.length!=0){
+  //   console.log("1notzero");
+    
+//  
+
+
+    var lSplitter = dijit.registry.byId("footer_splitter"); 
+ dojo.connect(lSplitter.domNode, "click", someFunction);
+  
+  function someFunction(){
+    if(typeof myTable !== "undefined"){
+       chart.render();
+  }else{
+    alert("Selection has not been made yet.")
+  }
+  
+  }
+  
+   //if(typeof myTable === "undefined"){
+   //data=[];
+    // }
+     
+     chart.render();
+ 
+  /////////////////////
+  data2 = [];
+   dataSeries2 = { type: "bubble" };
+ 	dataPoints2 = [];
+	for (var j = 0; j < evt.results.length; j += 1) {
+			dataPoints2.push({
+			y: evt.results[j].LNABUND,
+			x: evt.results[j].BTM_TEMP,
+			z: (evt.results[j].LNABUND/5),
+			markerBorderColor : "Silver", //change color here
+        		markerBorderThickness: 1,
+			color:"red"
+		});
+	}
+	dataSeries2.dataPoints = dataPoints2;
+	data2.push(dataSeries2);   
+              var chart2 = new CanvasJS.Chart("graphdiv2B",
+	{
+		zoomEnabled: true,
+    maintainAspectRatio: false,
+		panEnabled: true, 
+		title:{
+			text: title
+		},
+		exportEnabled:true,
+		backgroundColor: "AliceBlue",
+		legend: {
+			horizontalAlign: "right",
+			verticalAlign: "center"        
+		},
+		toolTip:{
+  backgroundColor: "#1E90FF",
+  fontColor: "Yellow",
+  content:"Bottom Temp: {x}, LogCatch: {y}"
+ },
+		axisX:{
+			includeZero: false,
+			title:"Temperature (c)",
+		},
+		axisY:{
+			includeZero: false,
+			title:"Log(ABUND)",
+		},
+		data: data2,  // random generator below
+    });
+
+ 
+         
+        // var lSplitter2 = dijit.registry.byId("footer_splitter"); 
+ dojo.connect(lSplitter.domNode, "click", someFunction2);
+  
+  function someFunction2(){
+    if(typeof myTable !== "undefined"){
+    chart2.render();
+     }else{
+    alert("Selection has not been made yet.")
+  }
+         
+  }    
+         
+   //    if(typeof myTable === "undefined"){
+   // data2 = [];
+   //  }
+       
+       chart2.render();
+          });
+ 
+  }
+ aorv='SURFACE AREA';
+/////////////////////////////////////////////////////////////////////////////////// ECOMON Data Exploration
+	function getDataContent(){
+    
+  console.log("counter:"+counter);
+  if (counter>=1){
+    addSpecies();
+  }  
+	
+	//document.getElementById("info").innerHTML ="Job Completed Successfully";
+	comname=dijit.byId('stateSelect').get('displayedValue'); /////TAXA_NAME
+  spec10=dijit.byId('stateSelect').get('value');//// serves the COLUMN_NAM that relates to TAXA_NAME
+  spec100=dijit.byId('stateSelect').item.id100; /////Volume COLUM_N_1
+  
+
+////Area or Volume Basis 
+  radio1=dijit.byId('radioOne').get('value'); 
+  radio100=dijit.byId('radioTwo').get('value'); 
+  if(radio100=='VOLUME'){
+    aorv='VOLUME';
+    console.log(aorv);
+  }
+  console.log('aorv:'+aorv);
+  console.log('radio100:'+radio100);
+ registry.byId("radioOne").on("change", function(isChecked){
+  				if(isChecked){
+						aorv='SURFACE AREA';
+            console.log(aorv);
+            
+					}
+				}, true);
+        
+  registry.byId("radioTwo").on("change", function(isChecked){
+    			if(isChecked){
+						aorv='VOLUME';
+            console.log(aorv);
+            
+					}
+				}, true);
+
+ 
+  ///// Query with surface or volume depending on radio button
+  if (aorv=='VOLUME'){
+  spec=spec100;   
+      }
+    else{
+      spec=spec10;
+    }
+    console.log('spec:'+spec);
+ 
+ //// Check log or normal results
+ var dispField = [];
+ var maxD;
+      		if(registry.byId("logOne").get("checked")){
+						dispField='ABUND';
+            maxD=1000000;
+            
+					}
+          if(registry.byId("logTwo").get("checked")){
+  					dispField='LNABUND';
+            maxD=15;
+					}
+          
+  console.log('dispF:'+dispField);
+ ///////////////////////////////////////////////
+ 
+ 
+ //Get months subset
+  var months = [];
+  				if(registry.byId("month1").get("checked")){
+						months.push(registry.byId("month1").get("value"));
+					}
+
+					if(registry.byId("month2").get("value") !== false){
+						months.push(registry.byId("month2").get("value"));
+					}
+          if(registry.byId("month3").get("checked")){
+  					months.push(registry.byId("month3").get("value"));
+					}
+
+					if(registry.byId("month4").get("value") !== false){
+						months.push(registry.byId("month4").get("value"));
+					}
+          if(registry.byId("month5").get("checked")){
+  					months.push(registry.byId("month5").get("value"));
+					}
+
+					if(registry.byId("month6").get("value") !== false){
+						months.push(registry.byId("month6").get("value"));
+					}
+          if(registry.byId("month7").get("checked")){
+  					months.push(registry.byId("month7").get("value"));
+					}
+
+					if(registry.byId("month8").get("value") !== false){
+						months.push(registry.byId("month8").get("value"));
+					}
+          if(registry.byId("month9").get("checked")){
+  					months.push(registry.byId("month9").get("value"));
+					}
+
+					if(registry.byId("month10").get("value") !== false){
+						months.push(registry.byId("month10").get("value"));
+					}
+          if(registry.byId("month11").get("checked")){
+  					months.push(registry.byId("month11").get("value"));
+					}
+
+					if(registry.byId("month12").get("value") !== false){
+						months.push(registry.byId("month12").get("value"));
+					}
+
+
+  console.log(months);
+
+
+  //title=comname+":\n"+sizmin+" - "+sizmax+"(cm) "+yrmin+" - "+yrmax;
+  //title=comname+":\n"+months+" - "+yrmin+" - "+yrmax;
+    title=comname+": "+yrmin+" - "+yrmax+"\n"+aorv;
+	
+  /*/// Query for Plankton species with zeros
+  Species_Query="SELECT a.TOW,a.ZOO_GEAR, a.ICH_GEAR, a.LAT, a.LON, a.SAMPLE_DATE, a.DEPTH,a.SFC_TEMP,a.SFC_SALT,a.BTM_TEMP,a.BTM_SALT,a.VOLUME_1M2,a.CTYP_10M2,a.MONTH,a.YEAR,a."+spec+" FROM ECOMON_PLANKTON_DATA_V3 a WHERE (((a.YEAR>="+yrmin+") AND (a.YEAR<="+yrmax+")) AND (a.MONTH IN ("+months+")))"
+  
+  */
+
+ //// Query for Plankton species without zeros
+  Species_Query='SELECT a.TOW,a.ZOO_GEAR, a.ICH_GEAR, a.LAT, a.LON, a.SAMPLE_DATE, a.DEPTH,a.SFC_TEMP,a.SFC_SALT,a.BTM_TEMP,a.BTM_SALT,a.VOLUME_1M2,a.CTYP_10M2,a.MONTH,a.YEAR,a.'+spec+' as "ABUND",ROUND(LN(a.'+spec+'+1),6)LNABUND FROM ECOMON_PLANKTON_DATA_V3 a WHERE (((a.YEAR>='+yrmin+') AND (a.YEAR<='+yrmax+')) AND (a.MONTH IN ('+months+')) AND (a.'+spec+'>0) AND (a.BTM_TEMP IS NOT NULL) AND (a.DEPTH IS NOT NULL))'
+
+
+
+// Displays resultant queries
+	var contentDiv = dom.byId("content");
+          contentDiv.value = "Data Query: "+Species_Query;
+		
+	var infoDiv = dom.byId("info");
+         
+	// infoDiv.value = "help";
+
+	console.log(title);
+
+		  
+		
+///////////////////////////////////////////////////////call geoproc function to query the ECOMON TABLES
+	
+	    require([
+      "esri/map",
+      "esri/graphic","esri/dijit/Legend",
+      "esri/graphicsUtils",
+      "esri/tasks/Geoprocessor","esri/layers/ArcGISDynamicMapServiceLayer",
+      "esri/tasks/FeatureSet","esri/Color",
+	  "esri/symbols/SimpleMarkerSymbol","esri/renderers/SimpleRenderer",
+      "esri/symbols/SimpleLineSymbol","esri/renderers/HeatmapRenderer", 
+      "esri/symbols/SimpleFillSymbol","dijit/form/CheckBox","dojo/dom-construct",
+	  "dojo/_base/Color","esri/dijit/Legend","dojo/_base/array","dojo/on","esri/layers/DynamicLayerInfo"],
+    function (Map, Graphic, Legend,graphicsUtils, Geoprocessor, FeatureSet,Color, ArcGISDynamicMapServiceLayer,SimpleMarkerSymbol, SimpleRenderer,SimpleLineSymbol,HeatmapRenderer, SimpleFillSymbol, CheckBox,domConstruct,Color,Legend,arrayUtils,on,dynLayerInfo){
+
+      
+	var dgp;
+     
+        //dgp = new Geoprocessor("http://necvssharcgis:6080/arcgis/rest/services/EFH/EFH_DATA_15/GPServer/EFH_Data_15");// FOR BASE SYSTEM (NON PLANKTON)
+        dgp = new Geoprocessor("http://necvssharcgis:6080/arcgis/rest/services/EFH/Plankton_data1/GPServer/EFH_Plankton_data1");
+      
+	 //gp.setOutputSpatialReference({wkid:102100});
+
+////////////////////////////////////////////Turn this back on
+        computeServiceArea();
+
+      function computeServiceArea(evt) {
+       
+       var params = {"Species_Query":Species_Query};
+       
+	dojo.connect(dgp, "onError",onTaskFailure);
+	dgp.submitJob(params,dgpJobComplete,status);
+	
+
+	}
+/////////////////////////////////////////////////////       
+	
+	// Handler that is invoked when the Task operation has failed
+	function onTaskFailure(error) {
+  	// Report error 
+  	alert("Error:"+ error); 
+	}
+
+	function status(jobInfo) {
+  	console.log(jobInfo.jobStatus);
+	//infoDiv.value = (jobInfo.jobStatus);
+	//document.getElementById("info").start();
+	document.getElementById("info").innerHTML =(jobInfo.jobStatus)+": Please Stand By, Data Selection Process May Take Up to 30 Seconds.";
+    
+	}
+   
+
+	 
+	function dgpJobComplete(jobinfo){
+  		console.log("addding data map");
+      var tc = dijit.byId("tabcont");
+  	  tc.selectChild("subtab");       //switches focus on left
+      
+      var tcl = dijit.byId("acordTab");
+      tcl.selectChild("display");     //switches focus on right
+      
+  		document.getElementById("info").innerHTML ="Job Completed Successfully-Data Table and Graph Generated. Available through tabs to the left";
+		// Switches tab focus
+		//var tc = dijit.byId("leftPane");
+		//var tc = dijit.byId("tabcont");
+		//tc.selectChild("proctab");       
+		document.getElementById("stitle").innerHTML =title;
+	
+		console.log(jobinfo.jobId);
+	
+	dlayer = new esri.layers.FeatureLayer("http://necvssharcgis:6080/arcgis/rest/services/EFH/Plankton_data1/MapServer/jobs/" + jobinfo.jobId+"/0",{
+      		//mode: esri.layers.FeatureLayer.MODE_SNAPSHOT,
+            mode: esri.layers.FeatureLayer.MODE_ONDEMAND,        
+   		      visible:true,	
+       		//orderByFields: [ "ABUND DESC" ],
+        	 //outFields: ["TOW","ZOO_GEAR", "ICH_GEAR", "SAMPLE_DATE", "DEPTH","SFC_TEMP","SFC_SALT","BTM_TEMP","BTM_SALT","CTYP_10M2","MONTH","YEAR",""+spec+""],
+          outFields: ["TOW","ZOO_GEAR", "ICH_GEAR", "DEPTH","SFC_TEMP","SFC_SALT","BTM_TEMP","BTM_SALT","CTYP_10M2","MONTH","YEAR","ABUND","LNABUND"],
+          opacity: 0.9,
+		      id: "bubble_"+comname+"-"+(counter)
+       		 });
+		
+
+		//map.addLayer(dlayer);
+	
+
+    dlayer.on("mouse-over", showTooltip);
+   	dlayer.on("mouse-out", closeDialog);
+
+     
+    red = Math.floor((Math.random() * 255) +0);
+    green = Math.floor((Math.random() * 255) +0);
+    var marker = new SimpleMarkerSymbol().setOutline(new SimpleLineSymbol().setWidth(0.5));
+        marker.setColor(new Color([red,green,255]));    
+    var renderer = new SimpleRenderer(marker);
+    
+    
+    //var bubCtrl = document.getElementById("bubControl");
+     renderer.setProportionalSymbolInfo({
+          //field:"ABUND",
+          field:dispField,
+          minSize:2,
+          maxSize:40,
+          valueUnit:"unknown",
+          minDataValue:0,
+         //maxDataValue:10000000
+         //maxDataValue:20
+         maxDataValue:maxD
+          //valueRepresentation:"area"
+        });
+        
+        //dlayer.on("load", function() {
+         // dlayer.renderer.setProportionalSymbolInfo(sizeInfo);
+    /*
+    renderer.setColorInfo({
+            field: "YEAR",
+           minDataValue: 1971,
+            maxDataValue: 2020,
+            colors: [
+              new Color([255,255,204]),new Color([199,233,180]),new Color([127,205,187]),new Color([65,182,196]),new Color([44,127,184]),new Color([37,52,148])
+              //new Color([200, 22, 255]),new Color([5, 225, 5]),
+              //new Color([127, 127, 0])
+            ]
+          });
+         // dlayer.copyright = "Pessutti";
+       // });  
+    */
+    dlayer.setRenderer(renderer);
+	
+	/////////////Heatmap
+	      heatmapFeatureLayer = new esri.layers.FeatureLayer("http://necvssharcgis:6080/arcgis/rest/services/EFH/Plankton_data1/MapServer/jobs/" + jobinfo.jobId+"/0",{
+      		//mode: esri.layers.FeatureLayer.MODE_SNAPSHOT,
+          mode: esri.layers.FeatureLayer.MODE_ONDEMAND,
+          //infoTemplate: infoTemplate,
+          outFields: ["TOW","ZOO_GEAR", "ICH_GEAR", "DEPTH","SFC_TEMP","SFC_SALT","BTM_TEMP","BTM_SALT","CTYP_10M2","MONTH","YEAR","ABUND","LNABUND"],
+          opacity:0.8,
+          id: "heat_"+comname+"-"+(counter)
+        });
+        
+        var blurCtrl = document.getElementById("blurControl");
+        var maxCtrl = document.getElementById("maxControl");
+        var minCtrl = document.getElementById("minControl");
+        var valCtrl = document.getElementById("valueControl");
+
+        var heatmapRenderer = new HeatmapRenderer({
+         //field: "ABUND",
+          field: dispField,
+          blurRadius: blurCtrl.value,
+          maxPixelIntensity: maxCtrl.value,
+          minPixelIntensity: minCtrl.value
+        });
+        
+       heatmapFeatureLayer.setRenderer(heatmapRenderer);
+       
+       /** Add event handlers for interactivity **/
+
+        var sliders = document.querySelectorAll(".blurInfo p~input[type=range]");
+        var addLiveValue = function (ctrl){
+          var val = ctrl.previousElementSibling.querySelector("span");
+          ctrl.addEventListener("input", function (evt){
+            val.innerHTML = evt.target.value;
+          });
+        };
+        for (var i = 0; i < sliders.length; i++) {
+          addLiveValue(sliders.item(i));
+        }
+
+        blurCtrl.addEventListener("change", function (evt){
+          var r = +evt.target.value;
+          if (r !== heatmapRenderer.blurRadius) {
+            heatmapRenderer.blurRadius = r;
+            heatmapFeatureLayer.redraw();
+          }
+        });
+        maxCtrl.addEventListener("change", function (evt){
+          var r = +evt.target.value;
+          if (r !== heatmapRenderer.maxPixelIntensity) {
+            heatmapRenderer.maxPixelIntensity = r;
+            heatmapFeatureLayer.redraw();
+          }
+        });
+        minCtrl.addEventListener("change", function (evt){
+          var r = +evt.target.value;
+          if (r !== heatmapRenderer.minPixelIntensity) {
+            heatmapRenderer.minPixelIntensity = r;
+            heatmapFeatureLayer.redraw();
+          }
+        });
+        
+        /*bubCtrl.addEventListener("change", function (evt){
+          var r = +evt.target.value;
+          if (r !== renderer.maxSize) {
+            renderer.maxSize = r;
+            dlayer.refresh();
+            console.log("maxd: "+r);
+          }
+        });
+        */
+        
+        if(registry.byId("logTwo").get("checked")){
+  				  document.getElementById("maxValue").innerHTML = 10;
+            maxCtrl.value = 10;
+            heatmapRenderer.maxPixelIntensity = 10;
+            
+					}
+        
+        
+        
+        valCtrl.addEventListener("change", function (evt){
+          var chk = evt.target.checked;
+          if (!chk) {
+            document.getElementById("maxValue").innerHTML = 21;
+            maxCtrl.value = 21;
+            heatmapRenderer.maxPixelIntensity = 21;
+          }
+          else {
+            document.getElementById("maxValue").innerHTML = 50000;
+            maxCtrl.value = 50000;
+            heatmapRenderer.maxPixelIntensity = 50000;
+
+          }
+          heatmapRenderer.field = (chk) ? dispField : null;
+          heatmapFeatureLayer.redraw();
+        });
+       
+       // map.addLayer(heatmapFeatureLayer);
+	
+////////////////////	
+	
+/////////////////// Toggle layers
+         
+          
+     var legendLayers = [];
+     
+      legendLayers.push({ layer: heatmapFeatureLayer, title: 'Heatmap: '+comname+"-"+(counter) });
+      legendLayers.push({ layer: dlayer, title: "Bubble: "+comname+"-"+(counter) });
+      map.addLayers([ dlayer, heatmapFeatureLayer ]);
+          console.log(legendLayers);
+          map.on('layers-add-result', function () {
+         // map.on('load', function () {  
+          //add check boxes
+          arrayUtils.forEach(legendLayers, function (layer) {
+            var layerName = layer.title;
+            
+            var checkBox = new CheckBox({
+              name: "checkBox" + layer.layer.id,
+              value: layer.layer.id,
+              checked: layer.layer.visible
+            });
+            
+            checkBox.on("change", function () {
+              var targetLayer = map.getLayer(this.value);
+              targetLayer.setVisibility(!targetLayer.visible);
+              this.checked = targetLayer.visible;
+            });
+
+            //add the check box and label to the toc
+            domConstruct.place(checkBox.domNode, dom.byId("toggle"), "after");
+            var checkLabel = domConstruct.create('label', {
+                'for': checkBox.name,
+                innerHTML: layerName
+              }, checkBox.domNode, "after");
+            domConstruct.place("<br />", checkLabel, "after");
+          });
+       console.log("layers add result");
+    });
+	
+	////////////
+	
+	
+		makeTable();	 
+   subData();
+	}     
+
+ 
+	
+	
+
+
+
+	    function showTooltip(evt){
+        closeDialog();
+       
+        var tipContent =  "<b>Species</b>: " +comname+"<br><b>Abundance</b>: " + evt.graphic.attributes.ABUND+"<br><b>Log(Abundance)</b>: " + evt.graphic.attributes.LNABUND+
+        "<br><b>Survey</b>: " + evt.graphic.attributes.TOW+"<br><b>Surf Temp</b>: " + evt.graphic.attributes.SFC_TEMP+"<br><b>Bottom Temp</b>: " + evt.graphic.attributes.BTM_TEMP+"<br><b>Year</b>: " + evt.graphic.attributes.YEAR+"<br><b>Depth</b>: " + evt.graphic.attributes.DEPTH;
+        var dialog = new dijit.TooltipDialog({
+          id: "tooltipDialog",
+          content: tipContent,
+          style: "position: absolute; width: 250px; font: normal normal bold 8pt Tahoma;z-index:100"
+        });
+        dialog.startup();
+
+        dojo.style(dialog.domNode, "opacity", 0.85);
+        dijit.placeOnScreen(dialog.domNode, {x: evt.pageX, y: evt.pageY}, ["TL", "BL"], {x: 10, y: 10});
+      }
+
+      function closeDialog() {
+        var widget = dijit.byId("tooltipDialog");
+        if (widget) {
+          widget.destroy();
+        }
+      }
+	
+
+ //add to web application.
+   
+
+
+
+
+
+});// End of EFHMAP function	
+     
+
+	counter+=1;
+
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Need to update query to reflect user input on temp or depth	
+function getContent(){
+
+        // I have created a geoprocessing service that resides on an arcgis server. It requires two DB queries to run, and this is an example of 
+	// of the queries. The sliders and combobox, are used to select the parameters of the queries.   
+
+	spec=dijit.byId('stateSelect').get('value');
+
+	comname=dijit.byId('stateSelect').get('displayedValue');
+
+	title=comname+":\n"+sizmin+" - "+sizmax+"(cm) "+yrmin+" - "+yrmax;
+
+	viewdef="SELECT a.TOW,a.ITIS,b.COMNAME, a.FILE_SOURCE,SUM(a.EXPNUMLEN)EXPCATCH,ROUND(LN(SUM(a.EXPNUMLEN)+1),6)lncatch,c.BEG_GMT_TOW_DATE,c.BEG_LAT_DEG, c.BEG_LON_DEG, c.TOW_DURATION_MIN,c.SURF_TEMP,c.SURF_SALIN FROM ITIS_LOOKUP b, EFH_T_IO_LEN a left join EFH_T_IO_STA c ON a.TOW=c.TOW where (((a.CM_LENGTH>="+sizmin+")AND(a.CM_LENGTH<="+sizmax+"))AND((extract(year from BEG_GMT_TOW_DATE)>="+yrmin+") AND (extract(year from BEG_GMT_TOW_DATE)<="+yrmax+")) and (b.ITIS=a.ITIS)and(a.ITIS='"+spec+"')) group by a.TOW, a.ITIS, b.COMNAME, a.FILE_SOURCE, c.BEG_GMT_TOW_DATE, c.BEG_LAT_DEG, c.BEG_LON_DEG, c.TOW_DURATION_MIN, c.SURF_TEMP,c.SURF_SALIN"
+	
+
+	Que="SELECT * FROM EFH_DEV.EFH_T_IO_STA WHERE ((extract(year from BEG_GMT_TOW_DATE)>="+yrmin+") AND (extract(year from BEG_GMT_TOW_DATE)<="+yrmax+"))"
+
+	// Displays resultant queries
+	var contentDiv = dom.byId("content");
+          contentDiv.value = viewdef+"    "+Que;
+	
+		
+
+	var infoDiv = dom.byId("info");
+         
+	// infoDiv.value = "help";
+
+		console.log(spec);
+		console.log(viewdef);
+	
+		console.log(Que);
+		
+		console.log(title);
+
+		  
+		
+		//call Mapping Function
+		//geoproc function
+	
+	    require([
+      "esri/map",
+      "esri/graphic",
+      "esri/graphicsUtils",
+      "esri/tasks/Geoprocessor","esri/layers/ArcGISDynamicMapServiceLayer",
+      "esri/tasks/FeatureSet",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+	  "dojo/_base/Color","esri/dijit/Legend","dojo/_base/array","esri/layers/DynamicLayerInfo"],
+    function (Map, Graphic, graphicsUtils, Geoprocessor, FeatureSet, ArcGISDynamicMapServiceLayer,SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Color,Legend,arrayUtil,dynLayerInfo){
+
+      
+	console.log("test:"+Que)
+	
+	
+	var gp;
+     
+        gp = new Geoprocessor("http://necvssharcgis:6080/arcgis/rest/services/EFH/EFH_MAP15/GPServer/EFH_MAPPER_15");
+      
+	 //gp.setOutputSpatialReference({wkid:102100});
+        computeServiceArea();
+
+      function computeServiceArea(evt) {
+       
+       var params = {"View_Definition":viewdef,"Query":Que};
+       
+	dojo.connect(gp, "onError",onTaskFailure);
+	gp.submitJob(params,gpJobComplete,status2);
+	
+
+	}
+       
+	
+	// Handler that is invoked when the Task operation has failed
+	function onTaskFailure(error) {
+  	// Report error 
+  	alert("Error:"+ error); 
+	}
+
+	function status2(jobInfo) {
+  	console.log(jobInfo.jobStatus);
+	//infoDiv.value = (jobInfo.jobStatus);
+	//document.getElementById("info").start();
+	document.getElementById("info").innerHTML =(jobInfo.jobStatus)+": Please Stand By, Process May Take A Few Minutes.";
+    
+	}
+   
+
+	 
+	function gpJobComplete(jobinfo){
+  		console.log("addding map");
+  		
+		// Switches tab focus
+		//var tc = dijit.byId("leftPane");
+		var tc = dijit.byId("tabcont");
+		tc.selectChild("proctab");       
+		document.getElementById("info").innerHTML ="Job Completed Successfully";
+		
+		
+	
+
+		
+		var layer = new esri.layers.ArcGISDynamicMapServiceLayer("http://necvssharcgis:6080/arcgis/rest/services/EFH/EFH_MAP15/MapServer/jobs/" + jobinfo.jobId);
+           	layer.setVisibleLayers([1,2]);
+         	//layer.setOpacity(0.7);
+         	
+		map.removeLayer(dlayer); 
+		map.addLayer(layer);
+	
+
+	var dynamicLayerInfos = layer.createDynamicLayerInfosFromLayerInfos();
+	console.log(layer.id);
+	 var legend = new esri.dijit.Legend({
+       map:map,
+      layerInfos:[{layer:layer,title:title}],
+      },"proctab2");
+      
+
+	legend.startup();
+
+
+
+
+
+ //add to web application.
+   
+
+
+
+
+	}
+
+
+
+
+
+
+}); // End of function
+
+    }    
+
+	
+//end of data
+
+
+/////////////////////////////////////////////////////////////////////////////The Following creates the sliders and associated calculations		
+	dojo.require("dojox.form.RangeSlider");
+	dojo.require("dijit.form.HorizontalSlider");
+	dojo.require("dijit.form.HorizontalRule");
+	dojo.require("dijit.form.HorizontalRuleLabels");
+  dojo.require("dijit/form/CheckBox");
+  dojo.require("dijit/form/RadioButton");
+	dojo.ready(function(){
+ 
+ 
+ 
+  ///// Month Checkboxes Defined in HTML and assigned in getDataContent function
+  
+  //Area or Volume Radio Defined in HTML and assigned in getDataContent function 
+
+	//// Depth slider
+	var deep = 300;
+   	var shal = 0;
+    	dmin=0;
+	dmax=300;		
+	dom.byId("dmin").value = 0;
+	dom.byId("dmax").value = 300;
+   	
+	var dslider = new dojox.form.HorizontalRangeSlider({
+        value: [0, 100],
+	
+	intermediateChanges: true,
+		onChange: function(e) {
+			console.log(dslider.value);
+			dmin=Math.trunc((dslider.value[0]/100)*deep);
+			dmax=Math.trunc((dslider.value[1]/100)*deep);
+		dom.byId("dmin").value = Math.trunc((dslider.value[0]/100)*deep);
+		dom.byId("dmax").value = Math.trunc((dslider.value[1]/100)*deep);
+       		console.log(dmax);
+			},
+    	}, "depthSliderNode");
+   
+			
+    	var dsliderLabel = new dijit.form.HorizontalRuleLabels({
+        container: 'topDecoration4',
+        maximum: deep,
+        minimum: shal,
+        count: ((deep- shal ) / 50) + 1,
+        numericMargin: 0,
+        constraints: {pattern: '#'}
+   	 }, "sliderLabelsNode4");
+    
+   	 var sliderRule4 = new dijit.form.HorizontalRule({
+        container: 'topDecoration4',
+        count: ((deep- shal ) / 50) + 1,
+        ruleStyle: 'border-color:gray;'
+  	  }, "sliderRuleNode4");
+
+
+	//Temperature Slider
+	var cold = 0;
+   	var hot = 40;
+    	tmin=0;
+	tmax=40;		
+	dom.byId("tmin").value = 0;
+	dom.byId("tmax").value = 40;
+   	
+	var tslider = new dojox.form.HorizontalRangeSlider({
+        value: [0, 100],
+	discreteValues:(hot-cold)+2,
+	intermediateChanges: true,
+		onChange: function(e) {
+			console.log(tslider.value);
+			tmin=Math.trunc((tslider.value[0]/100)*hot);
+			tmax=Math.trunc((tslider.value[1]/100)*hot);
+		dom.byId("tmin").value = Math.trunc((tslider.value[0]/100)*hot);
+		dom.byId("tmax").value = Math.trunc((tslider.value[1]/100)*hot);
+       		console.log(tmax);
+			},
+    	}, "tempSliderNode");
+   
+			
+    	var tsliderLabel = new dijit.form.HorizontalRuleLabels({
+        container: 'topDecoration3',
+        maximum: hot,
+        minimum: cold,
+        count: ((hot- cold ) / 5) + 1,
+        numericMargin: 0,
+        constraints: {pattern: '#'}
+   	 }, "sliderLabelsNode3");
+    
+   	 var sliderRule3 = new dijit.form.HorizontalRule({
+        container: 'topDecoration3',
+        count: ((hot- cold ) / 2) + 1,
+        ruleStyle: 'border-color:gray;'
+  	  }, "sliderRuleNode3");
+	
+
+
+///////Size Slider -NOt used in Plankton Site
+//	var small = 0;
+//   	 var large = 300;
+//    	sizmin=0;
+//	sizmax=510;		
+//	dom.byId("contmin").value = 0;
+//	dom.byId("contmax").value = 255;
+//   	 var slider = new dojox.form.HorizontalRangeSlider({
+//        value: [0, 85],intermediateChanges: true,
+//		onChange: function(e) {
+//			console.log(slider.value);
+//			sizmin=Math.trunc((slider.value[0]/100)*large);
+//			sizmax=Math.trunc((slider.value[1]/100)*large);
+//		dom.byId("contmin").value = Math.trunc((slider.value[0]/100)*large);
+//		dom.byId("contmax").value = Math.trunc((slider.value[1]/100)*large);
+//       		console.log(sizmax);
+//			},
+//    	}, "sizeSliderNode");
+   	
+			
+//    	var sliderLabel = new dijit.form.HorizontalRuleLabels({
+//        container: 'topDecoration',
+//        maximum: 300,
+//        minimum: small ,
+//        count: ((300- small ) / 50) + 1,
+//        numericMargin: 0,
+//        constraints: {pattern: '#'}
+//   	 }, "sliderLabelsNode");
+//    
+//   	 var sliderRule = new dijit.form.HorizontalRule({
+//        container: 'topDecoration',
+//        count: ((300- small ) / 50) + 1,
+//        ruleStyle: 'border-color:gray;'
+//  	  }, "sliderRuleNode");
+ 
+	
+	//Year slider		
+	var first = 1970;
+   	var last = 2020;
+   	yrmin=first;
+	yrmax=last;		
+	dom.byId("yearmin").value = first+1;
+	dom.byId("yearmax").value = last;
+    	var slider2 = new dojox.form.HorizontalRangeSlider({
+        value: [0, 100],
+		intermediateChanges: true,
+		onChange: function f2(e) {
+			console.log("sl2:"+slider2.value);
+			yrmin=Math.round(((slider2.value[0]/100)*50)+first)
+			yrmax=Math.round(((slider2.value[1]/100)*50)+first);
+		dom.byId("yearmin").value = Math.round(((slider2.value[0]/100)*50)+first);
+		dom.byId("yearmax").value = Math.round(((slider2.value[1]/100)*50)+first);
+       		console.log(yrmax);
+			},
+   	 }, "yearSliderNode");
+   
+			
+   	 var sliderLabel2 = new dijit.form.HorizontalRuleLabels({
+        container: 'topDecoration2',
+        maximum: 2020,
+        minimum: 1970,
+        count: 6,//((last - first) / 10) + 1,
+        numericMargin: 0,
+        constraints: {pattern: '#'}
+   	 }, "sliderLabelsNode2");
+    
+   	 var sliderRule2 = new dijit.form.HorizontalRule({
+        container: 'topDecoration2',
+        count: 1,//((last - first) / 10) + 1,
+        ruleStyle: 'border-color:gray;'
+  	  }, "sliderRuleNode2");
+	});		
+			
+
+   	}); //End of function-I think!
+
+
+ 	// The following queries a map service for values to use in a combobox. the map service will contain a species list that is created on the fly
+	
+      
+	require([
+      "esri/map", "esri/tasks/query", "dojo/parser", "dijit/layout/BorderContainer", "dijit/layout/ContentPane", 
+      "dijit/form/ComboBox", "dojo/data/ItemFileReadStore","dojo/store/Memory", "dojo/on", "dojo/domReady!"], 
+      function(Map, query, parser, BorderContainer, ContentPane, ComboBox, ItemFileReadStore, Memory, on) {  
+  
+        
+	
+ 
+	parser.parse();  
+/////////////////////////////////////////////////////// PLANKTON_ECOMON LOOKUP TABLE
+	//  My service contains species names.        
+       
+       
+      
+         
+       
+       var queryTask = new esri.tasks.QueryTask("http://necvssharcgis/arcgis/rest/services/EFH/Eco_lookup/MapServer/0");  
+  
+        //Define query parameters  
+        var query = new esri.tasks.Query();  
+        query.outFields = ["COLUMN_NAM","COLUMN_N_1","TAXA_NAME"];  
+        query.returnGeometry = false;  
+        query.where  = "COLUMN_NAM <> ''"  
+       // query.where  = "AORV='"+aorv+"'";  
+        queryTask.execute(query,populateList);  
+       
+       
+      
+      function populateList(results) {  
+        //Populate the dropdown list box with unique values  
+        var zone; //gets assigned TAXA_NAME
+      	var code;  //gets assigned COLUMN_NAM which is surface area
+        var code100; //gets assigned COLUMN_N_1 which is VOLUME
+        var values = [];  
+        var testVals={};  
+               
+        var features = results.features;  
+        dojo.forEach (features, function(feature) {  
+          zone = feature.attributes.TAXA_NAME;
+		      code= feature.attributes.COLUMN_NAM;
+          code100= feature.attributes.COLUMN_N_1; 
+          if (!testVals[zone]) {  
+            testVals[zone] = true;  
+            values.push({name:zone,id:code,id100:code100});  
+          }  
+        
+//	console.log(values);
+	});  
+          
+        
+
+	
+	var dataItems = {  
+               identifier: 'id',  
+               label: 'name',
+               items: values  
+       
+	 };  
+       
+	console.log(dataItems)
+	require([
+    	"dojo/store/Memory","dijit/form/FilteringSelect"
+	], function(Memory,FilteringSelect){
+   	var specStore = new Memory({idProperty: "id", data:dataItems});
+        
+    	
+
+    	var filteringSelect = new FilteringSelect({
+        id: "stateSelect",
+        name: "species",
+        value: "",
+	queryExpr: "*${0}*",
+        store: specStore,
+	autoComplete:false,	
+        searchAttr: "name"
+    	}, "stateSelect").startup();
+	});			
+
+	
+	
+    }  
+      
+//////////////////////////////////////////////////////////////////////////////////             
+      
+	var resizeTimer;  
+
+	function resizeMap() {  
+        //Handle browser resize  
+        clearTimeout(resizeTimer);            
+        resizeTimer = setTimeout(function() {  
+          map.resize();  
+          map.reposition();  
+        }, 800);  
+      }  
+  
+     
+    	
+	
+
+});  //End of First Function -I think   
+
+
+
+
+  
+</script>
+  </head>
+  
+  <body class="claro">   <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'"
+     style="width:100%; height:100%;">
+
+      <div id="header" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+        <div id="title">
+		 Essential Fish Habitat - Plankton 
+        </div>
+      </div>
+      
+      <div data-dojo-type="dijit/layout/ContentPane" id="leftPane" data-dojo-props="region:'left',splitter:true">
+        <div data-dojo-type="dijit/layout/TabContainer" id="tabcont">
+          <div id="spectab" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Species', selected:'true'">
+            <p>Species Selection
+	 		<input id="stateSelect" 
+             style="width:250px;font-size:18px;"  
+             forceValidOption="false" value="Select Species"></input> 
+		</p>
+		<p>Calculation Basis</p>
+     <div id="aorvSliderNode">
+        <input type="radio" data-dojo-type="dijit/form/RadioButton" name="Calculation" id="radioOne" checked value="SURFACE AREA"/> <label for="radioOne">per 10m2 Surface Area</label> <br />
+        <input type="radio" data-dojo-type="dijit/form/RadioButton" name="Calculation" id="radioTwo" value="VOLUME"/> <label for="radioTwo">per 100m3 Volume</label> <br />
+    <p>_________________________</p>
+      <input type="radio" data-dojo-type="dijit/form/RadioButton" name="logger" id="logOne" checked value="ABUND"/> <label for="logOne">Results as Abundance</label> <br />
+        <input type="radio" data-dojo-type="dijit/form/RadioButton" name="logger" id="logTwo" value="LNABUND"/> <label for="logTwo">Results as Log(Abundance)</label> <br />
+    
+    
+    <p>_________________________</p>
+        
+    <p>Month Selection</p>
+    
+    <div id="monthSliderNode">
+   
+        <ul 
+  			<li>
+					<input id="month1" type="checkbox" value="1" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month1">January</label>
+				</li>
+				<li>
+					<input id="month2" type="checkbox" value="2" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month2">February</label>
+				</li>
+          <li>
+					<input id="month3" type="checkbox" value="3" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month3">March</label>
+				</li>
+          <li>
+					<input id="month4" type="checkbox" value="4" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month4">April</label>
+				</li>
+          <li>
+					<input id="month5" type="checkbox" value="5" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month5">May</label>
+				</li>
+          <li>
+					<input id="month6" type="checkbox" value="6" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month6">June</label>
+				</li>
+          <li>
+					<input id="month7" type="checkbox" value="7" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month7">July</label>
+				</li>
+          <li>
+					<input id="month8" type="checkbox" value="8" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month8">August</label>
+				</li>
+          <li>
+					<input id="month9" type="checkbox" value="9" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month9">September</label>
+				</li>
+          <li>
+					<input id="month10" type="checkbox" value="10" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month2">October</label>
+				</li>
+          <li>
+					<input id="month11" type="checkbox" value="11" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month11">November</label>
+				</li>
+        <li>
+  				<input id="month12" type="checkbox" value="12" checked
+						data-dojo-type="dijit/form/CheckBox">
+					<label for="month12">December</label>
+				</li>
+			</ul>
+
+    
+    <!--
+    		<p>Size Range Selection (cm)</p>
+			<div id="sizeSliderNode">
+		
+        	<div id="sliderLabelsNode"></div>
+        	<div id="sliderRuleNode"></div>
+			<div id="sizers">	
+			<p>Size Min: <input type="text" id="contmin"></input>
+			  Size Max: <input type="text" id="contmax"></input></p>
+			</div>
+      -->
+      
+			<p>_________________________</p>
+		<p>Year Range Selection</p>
+			<div id="yearSliderNode">
+        	<div id="sliderLabelsNode2"></div>
+        	<div id="sliderRuleNode2"></div>
+			<div id="sizers2">	
+			<p>Start: <input type="text" id="yearmin"></input>
+			End: <input type="text" id="yearmax"></input></p>
+			<input id="submitSpecies" type="button" value=" Apply Selections " />
+			</div>
+			
+			
+		</div>  
+	
+		</div>
+		</div>
+	</div>
+        <div id="subtab" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Data'">
+            	<textarea id="stitle"></textarea>
+		<p>_________________________</p>
+		<p>Temperature(c) Selection</p>
+			
+		
+			<div id="tempSliderNode">
+        	       	<div id="sliderRuleNode3"></div>
+		<div id="sliderLabelsNode3"></div>
+			<div id="sizers3">	
+			<p>Start: <input type="text" id="tmin"></input>
+			End: <input type="text" id="tmax"></input></p>
+			
+			</div>
+			<p>_________________________</p>
+		<p>Depth(m) Selection</p>
+			</div>
+		
+			<div id="depthSliderNode">
+        	       	<div id="sliderRuleNode4"></div>
+		<div id="sliderLabelsNode4"></div>
+			<div id="sizers4">	
+			<p>Start: <input type="text" id="dmin"></input>
+			End: <input type="text" id="dmax"></input></p>
+			<input id="submitSelection" type="button" value="APPLY SELECTION" />
+			</div>  
+		 	<p>_________________________</p>
+			
+			
+
+		</div>
+          </div>  
+	<div id="tooltab" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Models'">
+            	<div id="tooltab2">
+			 <p>Model Selection
+	 		<input id="modelSelect" style="width:250px;font-size:18px;"  
+             forceValidOption="false" value="EFH Test Model 1"></input> 
+		</p>
+		<input id="submitModel" type="button" value="Run Model" />
+		</div>
+          </div>
+	  <div id="proctab" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Output'">
+            	<div id="proctab2"></div>
+          </div>
+        </div>
+      </div>
+	  <div data-dojo-type="dijit.layout.ContentPane" id="rightPane" data-dojo-props="region:'right',splitter:true">
+	    <div data-dojo-type="dijit.layout.AccordionContainer" id="acordTab">
+		  <div data-dojo-type="dijit.layout.ContentPane" title="Instructions">
+		    <div id="inst">Welcome to the EFH Inshore Mapper:<br><br>This tool will generate EFH Maps for the selected species, within the selected size range and year range. <br><br>Click on the Species selection drop box and either click the downarrow or begin typing the common name of a species. Move the range sliders to select the min and max animal size and first and last year of the data you want included.<br><br>When ready, click the "GO" Button to begin the processing. The system will automatically create all the necessary SQL queries and begin a geoprocessing service that will produce a resultant EFH map. Depending upon the number of years selected, the process can take up to three minutes to generate a map. <br><br>Maps can be printed to PDF by selecting the tab below this one. Please refresh the page in between each EFH map creation.</div>  
+			
+		   </div>
+  	 
+      <div data-dojo-type="dijit/layout/ContentPane" id="display" title="Display Options">
+  	      <div data-dojo-type="dijit.layout.AccordionContainer" id="layers" title="Layer Options">
+          <div id="toggle" ></div>
+          <p>_________________________</p>
+          </div>
+          <div class="blurInfo">
+          <p>
+         <label for="valueControl">Weight by Abundance</label>
+         <input id="valueControl" type="checkbox" checked>
+         </p>
+         <p>Blur Radius : <span id="blurValue">8</span></p>
+         <input id="blurControl" type="range" max=30 min=0 value=8 step=1/>
+
+        <p>Max Value : <span id="maxValue">50000</span></p>
+        <input id="maxControl" type="range" max=500000 min=1 value=50000 step=50000/>
+
+        <p>Min Value : <span id="minValue">0</span></p>
+        <input id="minControl" type="range" max=50000 min=0 value=0 step=1000/>
+         
+        </div>
+         
+		  </div>
+     
+     
+     <div data-dojo-type="dijit/layout/ContentPane" title="Printing Options">
+		   <div id="printButton"></div>
+       <input id="resetButton" type="button" value="Reset All" />
+       <input id="addButton" type="button" value="Add Species" />
+		  </div>
+  	  
+		  <div data-dojo-type="dijit/layout/ContentPane" title="Generated Queries">
+		    <textarea id="content"></textarea>
+		  </div>
+		</div>
+	  </div>
+		
+	<div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center',splitter:true">
+			
+    			
+	</div>
+      <div id="footer" data-dojo-type="dijit/layout/TabContainer" data-dojo-props="region:'bottom',tabPosition: 'left-h',splitter:true">
+       		<div id="infotab" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Info', selected:'true'">
+			<marquee id="info" behavior="scroll" direction="left"></marquee>
+      		</div>
+		<div id="tablediv" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Table'">
+      					<div id="tablediv2"></div>
+    		</div>
+		<div id="graphdiv"data-dojo-type="dijit/layout/ContentPane" data-dojo-props="title:'Graph'">
+      					<div id="graphdiv2" style="width:100%; height:100%;">
+        				 <div id="graphdiv2A" style="width:50%; height:100%;float:left;"></div>
+                 <div id="graphdiv2B" style="width:50%; height:100%;float:left;"></div> 
+      					</div>
+    		</div>
+	</div>
+
+    </div>
+
+	
+</body>
+
+</html>
