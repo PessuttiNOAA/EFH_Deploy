@@ -92,11 +92,12 @@ require([
             name: "EFH_Landscape_Tabloid",
             label: "EFH Landscape (PDF)",
             format: "pdf" ,
+
             options: {
               //legendLayers: [], // empty array means no legend
               scalebarUnit: "Miles",
-              titleText: ptitle,
-              customTextElements:[{ExtraText: months}]
+              titleText: '',
+              customTextElements:[{ExtraText: ''}]
             }
 
           }];
@@ -132,12 +133,23 @@ require([
 
 
          //on(dom.byId("printPane"), "click", printPrep);
-          printer.on('print-start',function(evt){
+  printer.on('print-start',function(evt){
 //    console.log("p "+ptitle);
    // plate.layoutOptions.customTextElements.centerLatLong = latLong;
 //  plate.layoutOptions.customTextElements.centerXY = center;
     printer.templates =templates;
+    //Apply Basic Title callback
+    esriRequest.setRequestPreCallback(myBasicCallbackFunction);
 
+    function myBasicCallbackFunction(args) {
+   var json = JSON.parse(args.content.Web_Map_as_JSON);
+     //Apply Title
+   json.layoutOptions.titleText=ptitle;
+   //Apply ExtraText
+  // json.layoutOptions.customTextElements[0]=surveys;
+  args.content.Web_Map_as_JSON = JSON.stringify(json);
+   return args;
+   }
 
    ////// This removes heatmap that erroneously prints!
 
@@ -152,7 +164,6 @@ require([
 
     var json = JSON.parse(args.content.Web_Map_as_JSON);
 
-
     for( var k = 0; k < json.operationalLayers.length; ++k ) {
         if( json.operationalLayers[k]['id']=='null_image0' ) {
              console.log(json.operationalLayers[k]['id'])
@@ -160,11 +171,14 @@ require([
         }
 
     }
+    //Apply Title
+    json.layoutOptions.titleText=ptitle;
+    //Apply ExtraText
+    //json.layoutOptions.customTextElements[0]=surveys;
 
    args.content.Web_Map_as_JSON = JSON.stringify(json);
     return args;
     }
-
 
 
      }
